@@ -25,6 +25,9 @@ from pprint import pprint # for debugging purposes
 # API Token: see https://api.slack.com/custom-integrations/legacy-tokens
 TOKEN = "<your_token>"
 
+# Threshold Date: delete files uploaded before this date
+THRESHOLD_DATE = "2018/01/01"
+
 # Set Token from environment variable SLACK_TOKEN (if it exists)
 if 'SLACK_TOKEN' in os.environ:
 	TOKEN = os.environ['SLACK_TOKEN']
@@ -135,13 +138,22 @@ def get_user_name(id):
 	if DEBUG and EXTREME_DEBUG: pprint(response_to_json(response))
 	return response_to_json(response)['user']['name']
 
+# delete file
+def delete_file(id):
+	url = API+'/files.delete'
+	data = {'token': TOKEN, 'file': id }
+	response = requests.post(url, data=data)
+	if DEBUG and EXTREME_DEBUG: pprint(response_to_json(response))
+	return response_to_json(response)['ok']
+
 # request files
-def make_requester():
+def make_requester(threshold_date):
 	list_url = API+'/files.list'
 
 	def all_requester(page):
 		print('Requesting all files')
-		data = {'token': TOKEN, 'page': page}
+		threshold_timestamp = str(int(datetime.datetime.strptime(threshold_date, '%Y/%m/%d').timestamp()))
+		data = {'token': TOKEN, 'ts_to':threshold_timestamp , 'page': page}
 		ts = get_timestamp()
 		if ts != None: data['ts_from'] = ts
 		response = requests.post(list_url, data=data)
@@ -163,7 +175,7 @@ if __name__ == '__main__':
 		os.mkdir(OUTPUTDIR)
 	page = 1
 	users = dict()
-	file_requester = make_requester()
+	file_requester = make_requester(THRESHOLD_DATE)
 	ts = None
 	while True:
 		json = file_requester(page)
@@ -191,6 +203,8 @@ if __name__ == '__main__':
 				local_filename = get_local_filename(basedir, date, filename, user)
 				print("Downloading file '"+str(file_url)+"'")
 				download_file(file_url, local_filename, basedir)
+				print("Deleting file '"+str(f['id'])+"'")
+				delete_file(f['id'])
 				if ts == None or float(date) > float(ts): ts = date
 			except Exception as e:
 				if DEBUG: print(str(e))
