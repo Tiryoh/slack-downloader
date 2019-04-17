@@ -26,7 +26,7 @@ from pprint import pprint # for debugging purposes
 TOKEN = "<your_token>"
 
 # Threshold Date: delete files uploaded before this date
-THRESHOLD_DATE = "2018/01/01"
+THRESHOLD_DATE = "2018/08/01"
 
 # Set Token from environment variable SLACK_TOKEN (if it exists)
 if 'SLACK_TOKEN' in os.environ:
@@ -187,19 +187,32 @@ if __name__ == '__main__':
 		if fileCount == 0: break
 		for f in json["files"]:
 			try:
+				if DEBUG and EXTREME_DEBUG: print('==================') # extreme debug
 				if DEBUG and EXTREME_DEBUG: pprint(f) # extreme debug
 				filename = f['name']
+				if DEBUG: print('filename:',filename) # debug
 				date = str(f['timestamp'])
+				if DEBUG: print('date:', date) # debug
 				user = users.get(f['user'], get_user_name(f['user']))
+				if DEBUG: print('user:', user) # debug
 				if len(f['channels']) > 0:
 					channel = get_channel_name(f['channels'][0])
 				elif len(f['groups']) > 0:
 					channel = get_group_name(f['groups'][0])
+				elif len(f['channels']) == 0 and len(f['groups']) == 0:
+					channel = 'no_channel_data'
 				else:
-					print("No channel/group for file", f['id'])
+					print("No channels/groups for file", f['id'])
 					continue
-				file_url = f["url_private_download"]
+				if DEBUG: print('channel:', channel) # debug
+				if 'url_private_download' in f:
+					if len(f['url_private_download']) > 0:
+						file_url = f["url_private_download"]
+				elif len(f['url_private']) > 0:
+					file_url = f["url_private"]
+				if DEBUG: print('file_url:', file_url) # debug
 				basedir = OUTPUTDIR+'/'+channel
+				if DEBUG: print('basedir:', basedir) # debug
 				local_filename = get_local_filename(basedir, date, filename, user)
 				print("Downloading file '"+str(file_url)+"'")
 				download_file(file_url, local_filename, basedir)
